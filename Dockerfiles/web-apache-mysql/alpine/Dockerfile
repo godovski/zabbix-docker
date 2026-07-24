@@ -133,7 +133,7 @@ RUN set -eux && \
     chown --quiet -R zabbix:0 ${FIX_PERM_LIST} && \
     chmod -R g=u ${FIX_PERM_LIST}
 
-RUN --mount=from=entrypoints,target=/tmp/entrypoints,ro \
+RUN --mount=from=entrypoints,target=/tmp/entrypoints,relabel=shared \
     set -eux && \
     install -d /usr/lib/docker-entrypoint && \
     install -m 0755 /tmp/entrypoints/web-apache-mysql.sh /usr/bin/docker-entrypoint.sh && \

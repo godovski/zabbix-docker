@@ -52,9 +52,14 @@ prepare_web_server() {
 
     : "${HTTP_INDEX_FILE:=index.php}"
 
+    # https://github.com/zabbix/zabbix/blob/master/ui/index_http.php#L36
+    # read out RemoteUser header
+    # foreach (['PHP_AUTH_USER', 'REMOTE_USER', 'AUTH_USER'] as $key) {
+
     [ -f "${NGINX_INCLUDES_DIR}/server-common.conf" ] && sed -i \
         -e "s/{FCGI_READ_TIMEOUT}/${fcgi_read_timeout}/g" \
         -e "s/{HTTP_INDEX_FILE}/${HTTP_INDEX_FILE}/g" \
+        -e '/fastcgi_param  CONTENT_LENGTH/a \ \ \ \ fastcgi_param  AUTH_USER        $http_remote_user;' \
         "${NGINX_INCLUDES_DIR}/server-common.conf"
 
     : "${EXPOSE_WEB_SERVER_INFO:=on}"
