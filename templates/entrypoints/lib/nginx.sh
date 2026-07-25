@@ -59,7 +59,7 @@ prepare_web_server() {
     [ -f "${NGINX_INCLUDES_DIR}/server-common.conf" ] && sed -i \
         -e "s/{FCGI_READ_TIMEOUT}/${fcgi_read_timeout}/g" \
         -e "s/{HTTP_INDEX_FILE}/${HTTP_INDEX_FILE}/g" \
-        -e '/fastcgi_param  CONTENT_LENGTH/a \ \ \ \ fastcgi_param  AUTH_USER        $http_remote_user;' \
+        -e '/fastcgi_param  CONTENT_LENGTH/a \ \ \ \ fastcgi_param  REMOTE_USER        $http_remote_user;' \
         "${NGINX_INCLUDES_DIR}/server-common.conf"
 
     : "${EXPOSE_WEB_SERVER_INFO:=on}"
