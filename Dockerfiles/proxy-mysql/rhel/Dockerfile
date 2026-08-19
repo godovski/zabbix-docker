@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=12
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
+ARG RELEASE=13
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
 ARG BUILD_BASE_IMAGE=zabbix-build-mysql:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -13,6 +13,8 @@ ARG MAJOR_VERSION
 ARG RELEASE
 ARG ZBX_VERSION
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
@@ -44,20 +46,19 @@ LABEL description="Zabbix proxy with MySQL database support" \
       io.k8s.display-name="Zabbix proxy (MySQL)" \
       io.openshift.expose-services="10051:10051" \
       io.openshift.tags="zabbix,zabbix-proxy,mysql" \
-      org.label-schema.build-date="${BUILD_DATE}" \
-      org.label-schema.description="Zabbix proxy with MySQL database support" \
-      org.label-schema.docker.cmd="docker run --name zabbix-proxy --link mysql-server:mysql-server -p 10051:10051 -d registry.connect.redhat.com/zabbix/zabbix-proxy-mysql-74:${ZBX_VERSION}" \
-      org.label-schema.license="AGPL v3.0" \
-      org.label-schema.name="zabbix-proxy-mysql-rhel" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://zabbix.com/" \
-      org.label-schema.usage="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
-      org.label-schema.vcs-ref="${VCS_REF}" \
-      org.label-schema.vcs-url="${ZBX_SOURCES}" \
-      org.label-schema.vendor="Zabbix SIA" \
-      org.label-schema.version="${ZBX_VERSION}"
+      org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
+      org.opencontainers.image.description="Zabbix proxy with MySQL database support" \
+      org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
+      org.opencontainers.image.title="Zabbix proxy (MySQL)" \
+      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.vendor="Zabbix SIA" \
+      org.opencontainers.image.version="${ZBX_VERSION}"
 
-STOPSIGNAL SIGTERM
 
 COPY licenses /licenses/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/proxy/sbin/zabbix_proxy /usr/sbin/zabbix_proxy
@@ -121,6 +122,7 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             --shell /sbin/nologin \
             --home-dir ${ZABBIX_USER_HOME_DIR} \
         zabbix && \
+    microdnf -y remove shadow-utils && \
     chgrp zabbix /usr/bin/nmap && \
     setcap cap_net_raw+eip /usr/bin/nmap && \
     mkdir -p ${ZABBIX_CONF_DIR} \

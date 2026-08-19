@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=12
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
-ARG BUILD_BASE_IMAGE=zabbix-build-mysql:rhel-${ZBX_VERSION}
+ARG RELEASE=13
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG BUILD_BASE_IMAGE=zabbix-build-common:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
 FROM builder AS clean_builder
@@ -25,6 +25,8 @@ ARG MAJOR_VERSION
 ARG RELEASE
 ARG ZBX_VERSION
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -53,20 +55,19 @@ LABEL description="Zabbix web-interface based on Nginx web server with MySQL dat
       io.k8s.display-name="Zabbix Frontend (Nginx)" \
       io.openshift.expose-services="8080:http,8443:https" \
       io.openshift.tags="zabbix,zabbix-web,mysql,nginx" \
-      org.label-schema.build-date="${BUILD_DATE}" \
-      org.label-schema.description="Zabbix web-interface based on Nginx web server with MySQL database support" \
-      org.label-schema.docker.cmd="docker run --name zabbix-web-nginx --link mysql-server:mysql --link zabbix-server:zabbix-server -p 80:80 -d registry.connect.redhat.com/zabbix/zabbix-web-nginx-74:${ZBX_VERSION}" \
-      org.label-schema.license="AGPL v3.0" \
-      org.label-schema.name="zabbix-web-mysql-rhel" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://zabbix.com/" \
-      org.label-schema.usage="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
-      org.label-schema.vcs-ref="${VCS_REF}" \
-      org.label-schema.vcs-url="${ZBX_SOURCES}" \
-      org.label-schema.vendor="Zabbix SIA" \
-      org.label-schema.version="${ZBX_VERSION}"
+      org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
+      org.opencontainers.image.description="Zabbix web-interface based on Nginx web server with MySQL database support" \
+      org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
+      org.opencontainers.image.title="Zabbix web-interface (Nginx, MySQL)" \
+      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.vendor="Zabbix SIA" \
+      org.opencontainers.image.version="${ZBX_VERSION}"
 
-STOPSIGNAL SIGTERM
 
 COPY licenses /licenses/
 COPY --from=clean_builder /tmp/zabbix-${ZBX_VERSION}/ui ${ZABBIX_WWW_ROOT}/
@@ -136,7 +137,6 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
         xargs -r -I '{}' bash -c 'echo "{}" && localedef -c -i {} -f UTF-8 {}.UTF-8 2>/dev/null' && \
     FIX_PERM_LIST="\
         ${ZABBIX_CONF_DIR}/ \
-        ${ZABBIX_WWW_ROOT}/include/defines.inc.php \
         ${ZABBIX_WWW_ROOT}/modules/ \
         ${ZABBIX_USER_HOME_DIR}/ \
         /etc/nginx/ \
@@ -149,7 +149,8 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
     microdnf -y remove \
             findutils \
             glibc-locale-source \
-            gzip
+            gzip \
+            shadow-utils
 
 RUN --mount=from=entrypoints,target=/tmp/entrypoints,ro \
     set -eux && \

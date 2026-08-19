@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=ubuntu:resolute
 ARG MAJOR_VERSION=7.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
-ARG BUILD_BASE_IMAGE=zabbix-build-mysql:ubuntu-${ZBX_VERSION}
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG BUILD_BASE_IMAGE=zabbix-build-common:ubuntu-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
 
@@ -11,6 +11,8 @@ FROM ${OS_BASE_IMAGE}
 ARG MAJOR_VERSION
 ARG ZBX_VERSION
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -21,14 +23,16 @@ ENV TERM=xterm \
 LABEL org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
       org.opencontainers.image.description="Zabbix Java Gateway performs native support for monitoring JMX applications" \
       org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
-      org.opencontainers.image.licenses="AGPL v3.0" \
-      org.opencontainers.image.source="${ZBX_SOURCES}" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
       org.opencontainers.image.title="Zabbix Java Gateway" \
       org.opencontainers.image.url="https://zabbix.com/" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
-STOPSIGNAL SIGTERM
 
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/java_gateway/sbin/ /usr/sbin/zabbix_java/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/java_gateway/conf/ ${ZABBIX_CONF_DIR}/

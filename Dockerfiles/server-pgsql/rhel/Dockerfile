@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=12
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
+ARG RELEASE=13
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
 ARG BUILD_BASE_IMAGE=zabbix-build-pgsql:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -13,6 +13,8 @@ ARG MAJOR_VERSION
 ARG RELEASE
 ARG ZBX_VERSION
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -44,20 +46,19 @@ LABEL description="Zabbix server with PostgreSQL database support" \
       io.k8s.display-name="Zabbix server (PostgreSQL)" \
       io.openshift.expose-services="10051:10051" \
       io.openshift.tags="zabbix,zabbix-server,pgsql" \
-      org.label-schema.build-date="${BUILD_DATE}" \
-      org.label-schema.description="Zabbix server with PostgreSQL database support" \
-      org.label-schema.docker.cmd="docker run --name zabbix-server --link postgresql:pgsql-server -p 10051:10051 -d registry.connect.redhat.com/zabbix/zabbix-server-pgsql-74:${ZBX_VERSION}" \
-      org.label-schema.license="AGPL v3.0" \
-      org.label-schema.name="zabbix-server-pgsql-rhel" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://zabbix.com/" \
-      org.label-schema.usage="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
-      org.label-schema.vcs-ref="${VCS_REF}" \
-      org.label-schema.vcs-url="${ZBX_SOURCES}" \
-      org.label-schema.vendor="Zabbix SIA" \
-      org.label-schema.version="${ZBX_VERSION}"
+      org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
+      org.opencontainers.image.description="Zabbix server with PostgreSQL database support" \
+      org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
+      org.opencontainers.image.title="Zabbix server (PostgreSQL)" \
+      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.vendor="Zabbix SIA" \
+      org.opencontainers.image.version="${ZBX_VERSION}"
 
-STOPSIGNAL SIGTERM
 
 COPY licenses /licenses/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/server/sbin/zabbix_server /usr/sbin/zabbix_server
@@ -125,6 +126,7 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             --shell /sbin/nologin \
             --home-dir ${ZABBIX_USER_HOME_DIR} \
         zabbix && \
+    microdnf -y remove shadow-utils && \
     chgrp zabbix /usr/bin/nmap && \
     setcap cap_net_raw+eip /usr/bin/nmap && \
     mkdir -p ${ZABBIX_CONF_DIR} \

@@ -3,8 +3,10 @@ ARG OS_BASE_IMAGE=alpine:3.24
 FROM ${OS_BASE_IMAGE}
 
 ARG MAJOR_VERSION=7.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -19,13 +21,16 @@ ENV SNMP_PERSISTENT_DIR=${ZABBIX_USER_HOME_DIR}/snmptrapd_config
 LABEL org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
       org.opencontainers.image.description="Zabbix SNMP traps receiver" \
       org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
-      org.opencontainers.image.licenses="AGPL v3.0" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
       org.opencontainers.image.title="zabbix-snmptraps" \
       org.opencontainers.image.url="https://zabbix.com/" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
-STOPSIGNAL SIGTERM
 
 RUN --mount=from=config_templates,target=/tmp/conf,ro \
     --mount=from=scripts,target=/tmp/scripts,ro \
@@ -35,6 +40,7 @@ RUN --mount=from=config_templates,target=/tmp/conf,ro \
             net-snmp" && \
     apk add \
             --no-cache \
+            --no-logfile \
             --clean-protected \
         ${INSTALL_PKGS} && \
     addgroup \

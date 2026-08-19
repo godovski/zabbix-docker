@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.6
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=12
-ARG ZBX_VERSION=${MAJOR_VERSION}.12
+ARG RELEASE=13
+ARG ZBX_VERSION=${MAJOR_VERSION}.13
 ARG BUILD_BASE_IMAGE=zabbix-build-base:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -12,6 +12,8 @@ ARG RELEASE
 ARG ZBX_VERSION
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 ARG GIT_BRANCH
+ARG ZBX_PRODUCT_REF=${GIT_BRANCH:-$ZBX_VERSION}
+ARG ZBX_PRODUCT_REVISION=unknown
 
 ARG ZBX_PLUGINS_VERSION=${GIT_BRANCH:-$ZBX_VERSION}
 ARG CFLAGS
@@ -29,12 +31,18 @@ LABEL description="Zabbix build base for MySQL based images" \
       io.k8s.display-name="Zabbix build base (MySQL)" \
       io.openshift.expose-services="" \
       io.openshift.tags="zabbix,build,mysql" \
-      org.label-schema.description="Zabbix build base for MySQL based images" \
-      org.label-schema.license="AGPL v3.0" \
-      org.label-schema.name="zabbix-build-mysql-rhel" \
-      org.label-schema.url="https://zabbix.com/" \
-      org.label-schema.vcs-ref="${VCS_REF}" \
-      org.label-schema.vendor="Zabbix SIA"
+      org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
+      org.opencontainers.image.description="Zabbix build base for MySQL based images" \
+      org.opencontainers.image.documentation="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      com.zabbix.product.source="${ZBX_SOURCES}" \
+      com.zabbix.product.ref="${ZBX_PRODUCT_REF}" \
+      com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
+      org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
+      org.opencontainers.image.title="Zabbix build base (MySQL)" \
+      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.vendor="Zabbix SIA" \
+      org.opencontainers.image.version="${ZBX_VERSION}"
 
 ENV ZBX_SOURCES_DIR=/tmp/zabbix-${ZBX_VERSION} ZBX_OUTPUT_DIR=/tmp/zabbix-${ZBX_VERSION}-output \
     DB_TYPE=mysql \
@@ -53,6 +61,7 @@ RUN --mount=from=sources,target=/tmp/src,z \
         ${ZBX_OUTPUT_DIR}/agent/sbin \
         ${ZBX_OUTPUT_DIR}/agent/conf \
         ${ZBX_OUTPUT_DIR}/agent2/sbin \
+        ${ZBX_OUTPUT_DIR}/agent2/sbin/zabbix-agent2-plugin \
         ${ZBX_OUTPUT_DIR}/agent2/conf \
         ${ZBX_OUTPUT_DIR}/agent2/conf/zabbix_agent2.d/plugins.d \
         ${ZBX_OUTPUT_DIR}/proxy/sbin \
@@ -67,9 +76,7 @@ RUN --mount=from=sources,target=/tmp/src,z \
         ${ZBX_OUTPUT_DIR}/web_service/sbin \
         ${ZBX_OUTPUT_DIR}/web_service/conf \
         ${ZBX_OUTPUT_DIR}/web/conf \
-        ${ZBX_OUTPUT_DIR}/general/sbin \
-        ${ZBX_OUTPUT_DIR}/general/bin \
-        ${ZBX_OUTPUT_DIR}/general/conf && \
+        ${ZBX_OUTPUT_DIR}/general/bin && \
     if [ -f /tmp/src/bootstrap.sh ]; then \
         mkdir -p "${ZBX_SOURCES_DIR}" && \
         cp -a /tmp/src/. "${ZBX_SOURCES_DIR}/"; \
@@ -118,6 +125,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         --with-ares \
         --with-ldap \
         --with-libcurl \
+        --with-libmodbus \
         --with-libpcre2 \
         --with-libxml2 \
         --with-${DB_TYPE} \
@@ -132,10 +140,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     make -j"${jobs}" -s && \
     make -j"${jobs}" -s gettext && \
     cat "database/${DB_TYPE}/schema.sql" > "database/${DB_TYPE}/create.sql" && \
-    gzip -c "database/${DB_TYPE}/create.sql" > "${ZBX_OUTPUT_DIR}/proxy/database/${DB_TYPE}/create.sql.gz" && \
+    gzip -c < "database/${DB_TYPE}/create.sql" > "${ZBX_OUTPUT_DIR}/proxy/database/${DB_TYPE}/create.sql.gz" && \
     cat "database/${DB_TYPE}/images.sql" >> "database/${DB_TYPE}/create.sql" && \
     cat "database/${DB_TYPE}/data.sql" >> "database/${DB_TYPE}/create.sql" && \
-    gzip -c "database/${DB_TYPE}/create.sql" > "${ZBX_OUTPUT_DIR}/server/database/${DB_TYPE}/create.sql.gz" && \
+    gzip -c < "database/${DB_TYPE}/create.sql" > "${ZBX_OUTPUT_DIR}/server/database/${DB_TYPE}/create.sql.gz" && \
     rm -f "database/${DB_TYPE}/create.sql" && \
     strip src/zabbix_agent/zabbix_agentd && \
     strip src/zabbix_server/zabbix_server && \
@@ -171,15 +179,16 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     cp -a /tmp/conf/web/. "${ZBX_OUTPUT_DIR}/web/conf/" && \
     make -s distclean
 
+ADD --chmod=0644 --checksum=sha256:68a3fc98800b2a27b371f2fb79991daf3633bd89309d4ffaa6946fd587f375b5 \
+    https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf \
+    ui/assets/fonts/NotoSansCJKjp-Regular.otf
+ADD --chmod=0644 --checksum=sha256:6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2 \
+    https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE \
+    ui/assets/fonts/OFL.txt
+
 RUN set -eux && \
-    cd "${ZBX_SOURCES_DIR}" && \
-    curl --retry 5 --retry-all-errors --retry-delay 2 --tlsv1.2 -sSf -L \
-        "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf" \
-        -o ui/assets/fonts/NotoSansCJKjp-Regular.otf && \
-    curl --retry 5 --retry-all-errors --retry-delay 2 --tlsv1.2 -sSf -L \
-        "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE" \
-        -o ui/assets/fonts/OFL.txt && \
     sed -i -r 's/(define\(.*_FONT_NAME.*)DejaVuSans/\1NotoSansCJKjp-Regular/' ui/include/defines.inc.php && \
+    sed -i -r "s/(define\(.*ZBX_SESSION_NAME.*)'zbx_sessionid'/\1getenv('ZBX_SESSION_NAME') ?: 'zbx_sessionid'/" ui/include/defines.inc.php && \
     sed -i -r 's/\.ttf/\.otf/' ui/include/graphs.inc.php && \
     rm -f ui/assets/fonts/DejaVuSans.ttf && \
     chmod o+r ui/assets/fonts/*
@@ -187,8 +196,6 @@ RUN set -eux && \
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
     set -eux && \
-    mkdir -p "${ZBX_OUTPUT_DIR}/agent2/sbin/zabbix-agent2-plugin" && \
-    mkdir -p "${ZBX_OUTPUT_DIR}/agent2/conf/zabbix_agent2.d/plugins.d" && \
     build_plugin() { \
         name="$1"; \
         repo="$2"; \
