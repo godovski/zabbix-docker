@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=13
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG RELEASE=15
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 ARG BUILD_BASE_IMAGE=zabbix-build-common:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -17,6 +17,7 @@ ARG ZBX_PRODUCT_REF=${ZBX_VERSION}
 ARG ZBX_PRODUCT_REVISION=unknown
 
 ENV TERM=xterm \
+    CHROME_CONFIG_HOME=/tmp/chromium-config \
     ZBX_VERSION=${ZBX_VERSION} \
     ZBX_SOURCES=${ZBX_SOURCES} \
     ZABBIX_USER_HOME_DIR=/var/lib/zabbix \
@@ -50,9 +51,10 @@ LABEL description="Zabbix web service for performing various tasks using headles
       org.opencontainers.image.version="${ZBX_VERSION}"
 
 
-COPY licenses /licenses/
+COPY --from=entrypoints /licenses/AGPL-v3.0.txt /licenses/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/web_service/sbin/zabbix_web_service /usr/sbin/zabbix_web_service
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/web_service/conf/ ${ZABBIX_CONF_DIR}/
+COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/web_service/sbom/ /usr/share/doc/zabbix/sbom/
 
 RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
     --mount=type=tmpfs,target=/var/cache/yum/ \

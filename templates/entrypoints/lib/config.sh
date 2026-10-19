@@ -3,6 +3,16 @@
 source "${ENTRYPOINT_LIBS}/logging.sh"
 source "${ENTRYPOINT_LIBS}/format.sh"
 
+configure_zabbix_user() {
+    if [ "$(id -u)" -eq 0 ]; then
+        export ZBX_ALLOWROOT=1
+    elif ZBX_USER="$(id -un 2>/dev/null)"; then
+        export ZBX_USER
+    else
+        unset ZBX_USER
+    fi
+}
+
 # usage: file_env VAR [DEFAULT]
 # as example: file_env 'MYSQL_PASSWORD' 'zabbix'
 #    (will allow for "$MYSQL_PASSWORD_FILE" to fill in the value of "$MYSQL_PASSWORD" from a file)
@@ -74,11 +84,6 @@ update_config_var() {
         return
     fi
 
-    # Use full path to a file for TLS related configuration parameters
-    if [[ $var_name =~ ^TLS.*File$ ]] && [[ ! $var_value =~ ^/.+$ ]]; then
-        var_value="${ZABBIX_USER_HOME_DIR}/enc/${var_value}"
-    fi
-
     # Escaping characters in parameter value and name
     var_value_raw=$var_value
     var_name_raw=$var_name
@@ -131,6 +136,9 @@ file_process_from_env() {
         file_name="${dir_name}/${var_name}"
         printf '%s' "$var_value" > "$file_name"
         export "$var_name=$file_name"
+    elif [[ "$var_name" =~ ^ZBX_(SERVER_)?TLS.*FILE$ ]] && [ -n "$file_name" ] && [[ "$file_name" != /* ]]; then
+        # Use full path to a file for TLS related configuration parameters, if specified only name of the file
+        export "$var_name=${ZABBIX_USER_HOME_DIR}/enc/${file_name}"
     fi
 
     # Remove variable with plain text data, for example ZBX_TLSCAFILE -> ZBX_TLSCA

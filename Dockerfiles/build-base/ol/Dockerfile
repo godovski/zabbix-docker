@@ -3,7 +3,7 @@ ARG OS_BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:10-slim
 FROM ${OS_BASE_IMAGE}
 
 ARG MAJOR_VERSION=7.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -19,7 +19,7 @@ LABEL org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zab
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
       org.opencontainers.image.title="Zabbix build base" \
-      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.url="https://hub.docker.com/r/zabbix/zabbix-build-base" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
@@ -35,6 +35,7 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             java-21-openjdk-devel \
             gettext \
             git \
+            jq \
             patch \
             c-ares-devel \
             libcurl-devel \
@@ -66,7 +67,7 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             --enablerepo="ol10_baseos_latest" \
             --enablerepo="ol10_appstream" \
             --enablerepo="ol10_codeready_builder" \
-            --enablerepo="ol10_u1_developer_EPEL" \
+            --enablerepo="ol10_u2_developer_EPEL" \
             --setopt=install_weak_deps=0 \
             --setopt=keepcache=0 \
             --best \

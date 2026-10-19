@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=13
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG RELEASE=15
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 ARG BUILD_BASE_IMAGE=zabbix-build-common:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -49,9 +49,10 @@ LABEL description="Zabbix Java Gateway performs native support for monitoring JM
       org.opencontainers.image.version="${ZBX_VERSION}"
 
 
-COPY ["licenses", "/licenses"]
+COPY --from=entrypoints /licenses/AGPL-v3.0.txt /licenses/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/java_gateway/sbin/ /usr/sbin/zabbix_java/
 COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/java_gateway/conf/ ${ZABBIX_CONF_DIR}/
+COPY --from=builder /tmp/zabbix-${ZBX_VERSION}-output/java_gateway/sbom/ /usr/share/doc/zabbix/sbom/
 
 RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
     --mount=type=tmpfs,target=/var/cache/yum/ \

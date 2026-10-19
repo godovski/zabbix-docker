@@ -3,7 +3,7 @@ ARG OS_BASE_IMAGE=ubuntu:resolute
 FROM ${OS_BASE_IMAGE}
 
 ARG MAJOR_VERSION=7.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zab
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
       org.opencontainers.image.title="Zabbix build base" \
-      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.url="https://hub.docker.com/r/zabbix/zabbix-build-base" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
@@ -39,6 +39,7 @@ RUN --mount=type=cache,target=/var/cache/apt/,sharing=locked \
             openjdk-21-jdk-headless \
             gettext \
             git \
+            jq \
             patch \
             unzip \
             libc-ares-dev \

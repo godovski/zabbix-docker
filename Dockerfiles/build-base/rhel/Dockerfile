@@ -3,8 +3,8 @@ ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 FROM ${OS_BASE_IMAGE}
 
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=13
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG RELEASE=15
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 
 ENV TERM=xterm \
     ZBX_VERSION=${ZBX_VERSION} \
@@ -36,8 +36,6 @@ LABEL description="Prepared environment to build Zabbix components" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
-COPY licenses /licenses/
-
 RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
     --mount=type=tmpfs,target=/var/cache/yum/ \
 #    --mount=type=bind,target=/run/secrets/,src=secrets/ \
@@ -51,6 +49,7 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             java-21-openjdk-devel \
             gettext \
             git \
+            jq \
             patch \
             c-ares-devel \
             libcurl-devel \

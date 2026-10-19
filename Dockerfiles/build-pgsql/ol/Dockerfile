@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 ARG MAJOR_VERSION=7.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.13
+ARG ZBX_VERSION=${MAJOR_VERSION}.15
 ARG BUILD_BASE_IMAGE=zabbix-build-base:ol-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -26,13 +26,13 @@ LABEL org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zab
       com.zabbix.product.revision="${ZBX_PRODUCT_REVISION}" \
       org.opencontainers.image.source="https://github.com/zabbix/zabbix-docker" \
       org.opencontainers.image.title="Zabbix build base (PostgreSQL)" \
-      org.opencontainers.image.url="https://zabbix.com/" \
+      org.opencontainers.image.url="https://hub.docker.com/r/zabbix/zabbix-build-pgsql" \
       org.opencontainers.image.vendor="Zabbix SIA" \
       org.opencontainers.image.version="${ZBX_VERSION}"
 
 ENV ZBX_SOURCES_DIR=/tmp/zabbix-${ZBX_VERSION} ZBX_OUTPUT_DIR=/tmp/zabbix-${ZBX_VERSION}-output \
     DB_TYPE=postgresql \
-    CFLAGS=${CFLAGS:-"-O2 -fPIE -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -pipe"} \
+    CFLAGS=${CFLAGS:-"-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -D_FORTIFY_SOURCE=3 -Wformat -Werror=format-security"} \
     LDFLAGS=${LDFLAGS:-"-pie -Wl,-z,relro,-z,now,-z,defs -Wl,--as-needed"} \
     MONGODB_PLUGIN_SOURCES=https://git.zabbix.com/scm/ap/mongodb.git MONGODB_PLUGIN_VERSION=${ZBX_PLUGINS_VERSION} \
     POSTGRESQL_PLUGIN_SOURCES=https://git.zabbix.com/scm/ap/postgresql.git POSTGRESQL_PLUGIN_VERSION=${ZBX_PLUGINS_VERSION} \
@@ -41,7 +41,7 @@ ENV ZBX_SOURCES_DIR=/tmp/zabbix-${ZBX_VERSION} ZBX_OUTPUT_DIR=/tmp/zabbix-${ZBX_
     NVIDIA_GPU_PLUGIN_SOURCES=https://git.zabbix.com/scm/ap/nvidia-gpu.git NVIDIA_GPU_PLUGIN_VERSION=${ZBX_PLUGINS_VERSION}
 
 RUN --mount=from=sources,target=/tmp/src,ro \
-    --mount=type=bind,source=patches/,target=/tmp/patches,ro \
+    --mount=from=patches,target=/tmp/patches,ro \
     set -eux && \
     mkdir -p \
         ${ZBX_OUTPUT_DIR}/agent/sbin \
@@ -141,8 +141,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     strip src/zabbix_proxy/zabbix_proxy && \
     strip src/zabbix_get/zabbix_get && \
     strip src/zabbix_sender/zabbix_sender && \
-    strip src/go/bin/zabbix_agent2 || true && \
-    strip src/go/bin/zabbix_web_service || true && \
+    { strip src/go/bin/zabbix_agent2 || true; } && \
+    { strip src/go/bin/zabbix_web_service || true; } && \
     mv src/zabbix_agent/zabbix_agentd "${ZBX_OUTPUT_DIR}/agent/sbin/" && \
     cp conf/zabbix_agentd.conf "${ZBX_OUTPUT_DIR}/agent/conf/zabbix_agentd.conf.dist" && \
     cp -a conf/zabbix_agentd/. "${ZBX_OUTPUT_DIR}/agent/conf/" && \
@@ -195,17 +195,17 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         conf="$5"; \
         outname="$6"; \
         workdir="/tmp/${name}-plugin-${version}"; \
-        rm -rf "$workdir"; \
+        rm -rf "$workdir" && \
         git -c advice.detachedHead=false clone "$repo" \
             --branch "$version" \
             --depth 1 \
             --single-branch \
-            "$workdir"; \
-        cd "$workdir"; \
-        make; \
-        strip "$binary" || true; \
-        mv "$binary" "${ZBX_OUTPUT_DIR}/agent2/sbin/zabbix-agent2-plugin/${outname}"; \
-        cp "$conf" "${ZBX_OUTPUT_DIR}/agent2/conf/zabbix_agent2.d/plugins.d/"; \
+            "$workdir" && \
+        cd "$workdir" && \
+        make && \
+        { strip "$binary" || true; } && \
+        mv "$binary" "${ZBX_OUTPUT_DIR}/agent2/sbin/zabbix-agent2-plugin/${outname}" && \
+        cp "$conf" "${ZBX_OUTPUT_DIR}/agent2/conf/zabbix_agent2.d/plugins.d/" && \
         make clean; \
     }; \
     build_plugin mongodb "${MONGODB_PLUGIN_SOURCES}" "${MONGODB_PLUGIN_VERSION}" \
@@ -218,3 +218,6 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         zabbix-agent2-plugin-ember-plus ember.conf ember-plus && \
     build_plugin nvidia-gpu "${NVIDIA_GPU_PLUGIN_SOURCES}" "${NVIDIA_GPU_PLUGIN_VERSION}" \
         zabbix-agent2-plugin-nvidia-gpu nvidia.conf nvidia-gpu
+
+RUN --mount=from=sbom,target=/tmp/sbom,ro \
+    sh /tmp/sbom/sbom.sh "${ZBX_SOURCES_DIR}" "${ZBX_VERSION}" "${ZBX_OUTPUT_DIR}"
