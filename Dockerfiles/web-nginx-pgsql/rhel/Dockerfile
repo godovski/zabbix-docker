@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.6
 ARG OS_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:10.2
 ARG MAJOR_VERSION=7.4
-ARG RELEASE=15
-ARG ZBX_VERSION=${MAJOR_VERSION}.15
+ARG RELEASE=16
+ARG ZBX_VERSION=${MAJOR_VERSION}.16
 ARG BUILD_BASE_IMAGE=zabbix-build-common:rhel-${ZBX_VERSION}
 
 FROM ${BUILD_BASE_IMAGE} AS builder
@@ -86,15 +86,14 @@ RUN --mount=type=tmpfs,target=/var/lib/dnf/ \
             shadow-utils \
             tzdata \
             nginx \
-            php-fpm \
-            php-bcmath \
-            php-curl \
-            php-gd \
-            php-json \
-            php-ldap \
-            php-mbstring \
-            php-pgsql \
-            php-xml \
+            php8.4-fpm \
+            php8.4-bcmath \
+            php8.4-common \
+            php8.4-gd \
+            php8.4-ldap \
+            php8.4-mbstring \
+            php8.4-pgsql \
+            php8.4-xml \
             postgresql18" && \
     ARCH_SUFFIX="$(arch)"; \
     microdnf -y install \
